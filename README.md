@@ -50,7 +50,12 @@ dotnet publish -c Release -r win-x64 --self-contained true /p:PublishReadyToRun=
 - 🎨 **简约界面**：现代化UI设计，操作直观
 - ⚡ **批量处理**：支持同时压缩多张图片
 - 💾 **自动保存**：压缩后的文件保存在你选择的输出目录
+- 📄 **导出PDF**：支持将压缩记录导出为PDF文档，方便存档和分享
 - 🔧 **ReadyToRun优化**：使用R2R编译，启动速度更快
+
+## 项目截图
+
+![图片压缩工具界面](demo.jpg)
 
 ## 技术栈
 
@@ -60,7 +65,7 @@ dotnet publish -c Release -r win-x64 --self-contained true /p:PublishReadyToRun=
 
 ## 如何运行
 
-### 方式1：使用Visual Studio 2022
+### 方式1：使用Visual Studio 2026
 
 1. 打开 Visual Studio 2022
 2. 选择"创建新项目"
