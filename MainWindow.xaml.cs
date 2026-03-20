@@ -19,22 +19,22 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Point = System.Windows.Point;
 
-namespace ImageCompressor;
-
-public partial class MainWindow : Window
+namespace ImageCompressor
 {
-    private ImageManager _imageManager;
-    private bool _isProcessing = false;
-    private int _targetKb = 200;
-    private string _customSizeText = "";
-    private bool _useBestCompression = true;
-    private string _outputPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-    private double _zoomLevel = 1.0;
-    private Point _panOffset = new Point(0, 0);
-    private Point _lastMousePosition;
-    private bool _isDragging = false;
-    private ImageItem? _draggedItem = null;
-    private ImageItem? _currentPreviewItem = null;
+    public partial class MainWindow : Window
+    {
+        private ImageManager _imageManager;
+        private bool _isProcessing = false;
+        private int _targetKb = 200;
+        private string _customSizeText = "";
+        private bool _useBestCompression = true;
+        private string _outputPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        private double _zoomLevel = 1.0;
+        private Point _panOffset = new Point(0, 0);
+        private Point _lastMousePosition;
+        private bool _isDragging = false;
+        private ImageItem? _draggedItem = null;
+        private ImageItem? _currentPreviewItem = null;
 
     public MainWindow()
     {
@@ -142,7 +142,7 @@ public partial class MainWindow : Window
 
                     if (!string.IsNullOrEmpty(config.CustomSize))
                     {
-                        _customSizeText = config.CustomSize;
+                        _customSizeText = config.CustomSize ?? string.Empty;
                         CustomSizeTextBox.Text = config.CustomSize;
                         CustomSizeTextBox.Visibility = Visibility.Visible;
                     }
@@ -160,7 +160,7 @@ public partial class MainWindow : Window
 
                     if (!string.IsNullOrEmpty(config.OutputPath) && Directory.Exists(config.OutputPath))
                     {
-                        _outputPath = config.OutputPath;
+                        _outputPath = config.OutputPath ?? _outputPath;
                         OutputPathTextBox.Text = _outputPath;
                     }
                 }
@@ -172,7 +172,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private string GetSelectedTag()
+    private string? GetSelectedTag()
     {
         try
         {
@@ -583,7 +583,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            if (!int.TryParse(selectedItem.Tag.ToString(), out _targetKb))
+            if (!int.TryParse(selectedItem.Tag?.ToString(), out _targetKb))
             {
                 _targetKb = 200;
             }
@@ -614,15 +614,16 @@ public partial class MainWindow : Window
                     
                     if (!string.IsNullOrEmpty(compressedPath) && File.Exists(compressedPath))
                     {
+                        var finalCompressedPath = compressedPath!;
                         Dispatcher.Invoke(() =>
                         {
-                            imageItem.CompressedFilePath = compressedPath;
-                            imageItem.CompressedSize = new FileInfo(compressedPath).Length;
+                            imageItem.CompressedFilePath = finalCompressedPath;
+                            imageItem.CompressedSize = new FileInfo(finalCompressedPath).Length;
                             
                             var bitmap = new BitmapImage();
                             bitmap.BeginInit();
                             bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                            bitmap.UriSource = new Uri(compressedPath);
+                            bitmap.UriSource = new Uri(finalCompressedPath);
                             bitmap.EndInit();
                             bitmap.Freeze();
                             imageItem.CompressedImage = bitmap;
@@ -661,7 +662,7 @@ public partial class MainWindow : Window
         });
     }
 
-    private string CompressSingleImage(string sourcePath, int targetKb)
+    private string? CompressSingleImage(string sourcePath, int targetKb)
     {
         try
         {
@@ -717,7 +718,7 @@ public partial class MainWindow : Window
     {
         int minQuality = 1;
         int maxQuality = currentQuality;
-        byte[] bestResult = null;
+        byte[]? bestResult = null;
 
         while (minQuality <= maxQuality)
         {
@@ -752,7 +753,7 @@ public partial class MainWindow : Window
 
     private byte[] CompressWithQualityBySteps(string sourcePath, int targetKb, int currentQuality)
     {
-        byte[] result = null;
+        byte[]? result = null;
         int quality = currentQuality;
 
         while (quality >= 1)
@@ -891,49 +892,87 @@ public partial class MainWindow : Window
         var progressWindow = new Window
         {
             Title = "导出PDF",
-            Width = 400,
-            Height = 150,
+            Width = 440,
+            Height = 220,
+            MinHeight = 220,
+            SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Owner = this,
-            ResizeMode = ResizeMode.NoResize
+            ResizeMode = ResizeMode.NoResize,
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 250, 252)),
+            Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 41, 59)),
+            FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
+            ShowInTaskbar = false
+        };
+
+        var progressBorder = new Border
+        {
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 255, 255)),
+            BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(20),
+            Margin = new Thickness(14)
         };
 
         var progressGrid = new System.Windows.Controls.Grid();
-        progressGrid.Margin = new Thickness(16);
-        progressGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-        progressGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-        progressGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+        progressGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+        progressGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+        progressGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+        progressGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
 
         var statusText = new System.Windows.Controls.TextBlock
         {
             Text = "正在生成PDF...",
-            Margin = new Thickness(0, 0, 0, 8)
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 6)
         };
         System.Windows.Controls.Grid.SetRow(statusText, 0);
         progressGrid.Children.Add(statusText);
 
+        var detailText = new System.Windows.Controls.TextBlock
+        {
+            Text = "正在准备导出内容，请稍候...",
+            FontSize = 12,
+            Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(100, 116, 139)),
+            Margin = new Thickness(0, 0, 0, 12),
+            TextWrapping = TextWrapping.Wrap
+        };
+        System.Windows.Controls.Grid.SetRow(detailText, 1);
+        progressGrid.Children.Add(detailText);
+
         var progressBar = new System.Windows.Controls.ProgressBar
         {
-            Height = 20,
+            Height = 18,
             Minimum = 0,
             Maximum = 100,
-            Value = 0
+            Value = 0,
+            Margin = new Thickness(0, 0, 0, 14),
+            Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(59, 130, 246)),
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240))
         };
-        System.Windows.Controls.Grid.SetRow(progressBar, 1);
+        System.Windows.Controls.Grid.SetRow(progressBar, 2);
         progressGrid.Children.Add(progressBar);
 
         var cancelButton = new System.Windows.Controls.Button
         {
             Content = "取消",
-            Width = 80,
-            Height = 32,
+            Width = 92,
+            Height = 34,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-            Margin = new Thickness(0, 8, 0, 0)
+            Margin = new Thickness(0, 0, 0, 0),
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 245, 249)),
+            BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(203, 213, 225)),
+            BorderThickness = new Thickness(1),
+            FontWeight = FontWeights.Medium,
+            Cursor = Cursors.Hand
         };
-        System.Windows.Controls.Grid.SetRow(cancelButton, 2);
+        System.Windows.Controls.Grid.SetRow(cancelButton, 3);
         progressGrid.Children.Add(cancelButton);
 
-        progressWindow.Content = progressGrid;
+        progressBorder.Child = progressGrid;
+        progressWindow.Content = progressBorder;
 
         bool isCancelled = false;
         cancelButton.Click += (s, e) => 
@@ -950,6 +989,16 @@ public partial class MainWindow : Window
 
                 int total = allImages.Count;
                 int processed = 0;
+
+                if (total == 0)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        progressWindow.Close();
+                        MessageBox.Show("当前没有可导出的图片。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    });
+                    return;
+                }
 
                 var pageSize = settings.PageSize switch
                 {
@@ -975,7 +1024,8 @@ public partial class MainWindow : Window
                             Dispatcher.Invoke(() =>
                             {
                                 progressBar.Value = (double)processed / total * 100;
-                                statusText.Text = $"正在处理: {imageItem.FileName} ({processed}/{total})";
+                                statusText.Text = $"正在导出第 {processed} / {total} 张";
+                                detailText.Text = $"当前文件: {imageItem.FileName}";
                             });
 
                             // 每张图片创建单独的一页
@@ -1007,6 +1057,9 @@ public partial class MainWindow : Window
 
                     Dispatcher.Invoke(() =>
                     {
+                        progressBar.Value = 100;
+                        statusText.Text = "导出完成";
+                        detailText.Text = "正在打开生成的 PDF 文件...";
                         progressWindow.Close();
                         
                         // 成功时直接打开PDF，不显示提示
@@ -1030,4 +1083,6 @@ public partial class MainWindow : Window
 
         progressWindow.ShowDialog();
     }
+}
+
 }

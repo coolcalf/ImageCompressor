@@ -1,6 +1,6 @@
 # 图片压缩工具 🦞
 
-一个简单易用的桌面图片压缩工具，支持拖放操作，精确控制压缩大小，基于 .NET 10.0 + WPF 构建。
+一个简单易用的桌面图片压缩工具，支持拖放操作，精确控制压缩大小，基于 .NET Framework 4.8 + WPF 构建，可在 Windows 10 上运行。
 
 ## 项目结构
 
@@ -36,10 +36,13 @@ cd ImageCompressor
 dotnet restore
 
 # 3. 编译运行
-dotnet run
+dotnet run -p:Platform=x64
 
-# 4. 发布生产版本
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishReadyToRun=true /p:TrimMode=link
+# 4. 发布 Windows 10 版本
+dotnet publish -c Release -p:Platform=x64
+
+# 5. 同时发布 32 位和 64 位版本
+发布32位和64位版本.bat
 ```
 
 ## 功能特点
@@ -50,22 +53,17 @@ dotnet publish -c Release -r win-x64 --self-contained true /p:PublishReadyToRun=
 - 🎨 **简约界面**：现代化UI设计，操作直观
 - ⚡ **批量处理**：支持同时压缩多张图片
 - 💾 **自动保存**：压缩后的文件保存在你选择的输出目录
-- 📄 **导出PDF**：支持将压缩记录导出为PDF文档，方便存档和分享
-- 🔧 **ReadyToRun优化**：使用R2R编译，启动速度更快
-
-## 项目截图
-
-![图片压缩工具界面](demo.jpg)
+- 🪟 **Windows 10 兼容**：基于 .NET Framework 4.8 发布
 
 ## 技术栈
 
-- **C# .NET 10.0**
+- **C# / .NET Framework 4.8**
 - **WPF** (Windows Presentation Foundation)
 - **System.Drawing** (图像处理)
 
 ## 如何运行
 
-### 方式1：使用Visual Studio 2026
+### 方式1：使用Visual Studio 2022
 
 1. 打开 Visual Studio 2022
 2. 选择"创建新项目"
@@ -90,7 +88,7 @@ cd ImageCompressor
 dotnet restore
 
 # 运行
-dotnet run --framework net8.0-windows
+dotnet run --framework net48 -p:Platform=x64
 ```
 
 ## 使用方法
@@ -119,8 +117,9 @@ dotnet run --framework net8.0-windows
 
 ### 环境要求
 
-- **.NET 10.0 SDK** 或更高版本
-- **Windows 10/11** (64位系统)
+- **.NET SDK 8/9/10 任一可用版本**（用于编译 SDK-style `net48` 项目）
+- **Windows 10/11**
+- **目标机器需安装或启用 .NET Framework 4.8**
 
 ### 快速编译（调试模式）
 
@@ -132,69 +131,45 @@ cd ImageCompressor
 dotnet restore
 
 # 编译运行
-dotnet run
+dotnet run -p:Platform=x64
 ```
 
 ### 发布为可执行文件（推荐）
 
-#### 1. **开发/测试发布**（无需安装 .NET）
-
-打包包含 .NET 运行时的自包含应用：
+`.NET Framework 4.8` 不是现代 `.NET` 的 self-contained 模式，因此推荐直接分发 `publish` 目录。
 
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained true
+dotnet publish -c Release -p:Platform=x64
+dotnet publish -c Release -p:Platform=x86
 ```
 
-- ✅ **无需安装 .NET**
+- ✅ 生成适合 Windows 10 的发布目录
 - ✅ 直接运行生成的 `ImageCompressor.exe`
-- 📦 包含完整 .NET 运行时（约 50-80 MB）
+- ✅ 适合打包为 zip/rar 后分发
+- 注意：目标机器需要启用 `.NET Framework 4.8`
+- 注意：`QuestPDF` 依赖原生库，必须按架构发布，不能使用 `Any CPU`
 
-#### 2. **ReadyToRun (R2R) 优化** ⚡
-
-使用 R2R 编译，显著提升启动速度：
-
-```bash
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishReadyToRun=true
-```
-
-- ⚡ **启动速度更快**（比普通发布快 2-3 倍）
-- ✅ **仍然需要 .NET 运行时**
-- 📦 较小的文件体积（相比普通发布）
-
-#### 3. **R2R + 资源裁剪** 🚀
-
-组合使用 R2R 和裁剪功能，最佳性能：
-
-```bash
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishReadyToRun=true /p:TrimMode=link
-```
-
-- ⚡ **最快的启动速度**
-- 📦 **最小的文件体积**
-- ✅ **不需要 .NET 运行时**
-- 🔧 **推荐用于生产环境**
-
-### 发布选项说明
-
-| 选项 | 文件大小 | 启动速度 | 需要运行时 | 推荐场景 |
-|------|---------|---------|-----------|---------|
-| 普通 | 10-20 MB | ⚡⚡ | ✅ 是 | 开发测试 |
-| Self-Contained | 50-80 MB | ⚡⚡ | ❌ 否 | 无需安装 |
-| ReadyToRun | 50-80 MB | ⚡⚡⚡ | ✅ 是 | 测试性能 |
-| **R2R + 裁剪** | **40-60 MB** | **⚡⚡⚡** | **❌ 否** | **生产部署** |
+也可以直接双击仓库根目录下的 `发布Windows10版本.bat` 或 `发布32位和64位版本.bat`。
 
 ### 发布文件位置
 
 编译成功后，可执行文件位于：
 
-```
-bin/Release/net10.0/win-x64/publish/
-├── ImageCompressor.exe  ← 主程序
-├── Microsoft.*.dll       ← 依赖库
+```text
+bin/x64/Release/net48/win-x64/publish/
+├── ImageCompressor.exe  <- 64-bit main program
+├── QuestPDF.dll
+├── qpdf.dll
+└── ...
+
+bin/x86/Release/net48/win-x86/publish/
+├── ImageCompressor.exe  <- 32-bit main program
+├── QuestPDF.dll
+├── qpdf.dll
 └── ...
 ```
 
-直接运行 `ImageCompressor.exe` 即可使用！
+把对应架构的整个 `publish` 目录一起拷贝到目标机器，直接运行 `ImageCompressor.exe` 即可使用。
 
 ## 使用方法
 
@@ -229,7 +204,7 @@ bin/Release/net10.0/win-x64/publish/
 - 压缩后的图片质量会比原图有所降低
 - 对于非常大的图片，可能需要一些时间处理
 - 压缩质量范围设置为10%-80%，避免过度压缩导致图片严重失真
-- WPF 不支持 Native AOT 编译，推荐使用 ReadyToRun (R2R) 方案
+- `QuestPDF` 使用原生依赖，若出现 `BadImageFormatException`，优先检查是否选错了 x86/x64 版本
 
 ## 许可证
 

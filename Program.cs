@@ -1,1 +1,3 @@
-namespace ImageCompressor;
+namespace ImageCompressor
+{
+}
