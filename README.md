@@ -55,6 +55,10 @@ dotnet publish -c Release -p:Platform=x64
 - 💾 **自动保存**：压缩后的文件保存在你选择的输出目录
 - 🪟 **Windows 10 兼容**：基于 .NET Framework 4.8 发布
 
+## 项目截图
+
+![图片压缩工具界面](demo.jpg)
+
 ## 技术栈
 
 - **C# / .NET Framework 4.8**
