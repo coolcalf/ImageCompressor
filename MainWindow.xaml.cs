@@ -24,6 +24,7 @@ namespace ImageCompressor
     public partial class MainWindow : Window
     {
         private ImageManager _imageManager;
+        private readonly ImageCompressionService _imageCompressionService = new ImageCompressionService();
         private bool _isProcessing = false;
         private int _targetKb = 200;
         private string _customSizeText = "";
@@ -42,8 +43,6 @@ namespace ImageCompressor
         
         using var dummyBitmap = new Bitmap(1, 1);
         using var dummyGraphics = Graphics.FromImage(dummyBitmap);
-        
-        QuestPDF.Settings.License = LicenseType.Community;
         
         _imageManager = new ImageManager();
         DataContext = _imageManager;
@@ -666,43 +665,21 @@ namespace ImageCompressor
     {
         try
         {
-            using var sourceImage = Bitmap.FromFile(sourcePath);
-            using var memoryStream = new MemoryStream();
-            int quality = 70;
-
-            var encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
-
-            var imageCodecInfo = GetImageCodecInfo(sourcePath);
-            if (imageCodecInfo == null)
-            {
-                throw new Exception("无法识别图片格式");
-            }
-
-            sourceImage.Save(memoryStream, imageCodecInfo, encoderParams);
-
-            var compressedData = memoryStream.ToArray();
+            var compressionResult = _imageCompressionService.CompressToTargetBytes(sourcePath, targetKb, _useBestCompression);
+            var outputExtension = compressionResult.OutputExtension;
+            var compressedData = compressionResult.Data;
             string outputPath;
 
             if (compressedData.Length <= targetKb * 1024)
             {
                 Directory.CreateDirectory(_outputPath);
-                outputPath = Path.Combine(_outputPath, $"{Path.GetFileNameWithoutExtension(sourcePath)}_compressed{Path.GetExtension(sourcePath)}");
+                outputPath = Path.Combine(_outputPath, $"{Path.GetFileNameWithoutExtension(sourcePath)}_compressed{outputExtension}");
                 File.WriteAllBytes(outputPath, compressedData);
                 return outputPath;
             }
 
-            if (_useBestCompression)
-            {
-                compressedData = CompressWithBinarySearch(sourcePath, targetKb, quality);
-            }
-            else
-            {
-                compressedData = CompressWithQualityBySteps(sourcePath, targetKb, quality);
-            }
-
             Directory.CreateDirectory(_outputPath);
-            outputPath = Path.Combine(_outputPath, $"{Path.GetFileNameWithoutExtension(sourcePath)}_compressed{Path.GetExtension(sourcePath)}");
+            outputPath = Path.Combine(_outputPath, $"{Path.GetFileNameWithoutExtension(sourcePath)}_compressed{outputExtension}");
             File.WriteAllBytes(outputPath, compressedData);
 
             return outputPath;
@@ -712,98 +689,6 @@ namespace ImageCompressor
             Debug.WriteLine($"压缩 {Path.GetFileName(sourcePath)} 失败: {ex.Message}");
             return null;
         }
-    }
-
-    private byte[] CompressWithBinarySearch(string sourcePath, int targetKb, int currentQuality)
-    {
-        int minQuality = 1;
-        int maxQuality = currentQuality;
-        byte[]? bestResult = null;
-
-        while (minQuality <= maxQuality)
-        {
-            int midQuality = (minQuality + maxQuality) / 2;
-
-            using var image = Bitmap.FromFile(sourcePath);
-            using var tempStream = new MemoryStream();
-
-            var encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, midQuality);
-
-            var imageCodecInfo = GetImageCodecInfo(sourcePath);
-            if (imageCodecInfo == null) throw new Exception("无法识别图片格式");
-
-            image.Save(tempStream, imageCodecInfo, encoderParams);
-
-            var result = tempStream.ToArray();
-
-            if (result.Length <= targetKb * 1024)
-            {
-                bestResult = result;
-                minQuality = midQuality + 1;
-            }
-            else
-            {
-                maxQuality = midQuality - 1;
-            }
-        }
-
-        return bestResult ?? new byte[0];
-    }
-
-    private byte[] CompressWithQualityBySteps(string sourcePath, int targetKb, int currentQuality)
-    {
-        byte[]? result = null;
-        int quality = currentQuality;
-
-        while (quality >= 1)
-        {
-            using var image = Bitmap.FromFile(sourcePath);
-            using var tempStream = new MemoryStream();
-
-            var encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
-
-            var imageCodecInfo = GetImageCodecInfo(sourcePath);
-            if (imageCodecInfo == null) throw new Exception("无法识别图片格式");
-
-            image.Save(tempStream, imageCodecInfo, encoderParams);
-
-            result = tempStream.ToArray();
-
-            if (result.Length <= targetKb * 1024)
-            {
-                break;
-            }
-
-            quality -= 5;
-        }
-
-        return result ?? new byte[0];
-    }
-
-    private ImageCodecInfo GetImageCodecInfo(string filePath)
-    {
-        var extension = Path.GetExtension(filePath).ToLower();
-        
-        foreach (var codec in ImageCodecInfo.GetImageEncoders())
-        {
-            if (codec.MimeType.StartsWith("image/"))
-            {
-                var mimeParts = codec.MimeType.Split('/');
-                var format = mimeParts[1].Replace("jpeg", "jpg");
-
-                if (extension == $".{format}" || (extension == ".jpg" && format == "jpeg") ||
-                    (extension == ".png" && format == "png") ||
-                    (extension == ".gif" && format == "gif") ||
-                    (extension == ".bmp" && format == "bmp"))
-                {
-                    return codec;
-                }
-            }
-        }
-
-        return ImageCodecInfo.GetImageEncoders().FirstOrDefault(c => c.MimeType == "image/jpeg");
     }
 
     private void AddFiles(string[] filePaths)
@@ -870,6 +755,16 @@ namespace ImageCompressor
             return;
         }
 
+        try
+        {
+            EnsureQuestPdfInitialized();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"PDF导出组件初始化失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         var settingsDialog = new PdfSettingsDialog { Owner = this };
         if (settingsDialog.ShowDialog() != true)
             return;
@@ -884,6 +779,20 @@ namespace ImageCompressor
         if (saveDialog.ShowDialog() == true)
         {
             ExportToPdf(saveDialog.FileName, settingsDialog.Settings);
+        }
+    }
+
+    private void EnsureQuestPdfInitialized()
+    {
+        try
+        {
+            QuestPDF.Settings.License = LicenseType.Community;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "当前环境无法加载 PDF 导出组件。请使用与程序一致架构的发布版本（x86 或 x64），并确认 QuestPDF 原生依赖文件已随程序一起发布。",
+                ex);
         }
     }
 
