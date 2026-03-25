@@ -6,7 +6,7 @@
 
 ```
 ImageCompressor/
-├── ImageCompressor.sln          # 解决方案文件
+├── ImageCompressor.slnx         # 解决方案文件
 ├── ImageCompressor.csproj        # 项目文件
 ├── README.md                     # 项目说明（本文件）
 ├── .gitignore                    # Git 忽略文件
@@ -33,13 +33,13 @@ git clone <repository-url>
 cd ImageCompressor
 
 # 2. 还原依赖
-dotnet restore
+dotnet restore "ImageCompressor.csproj"
 
 # 3. 编译运行
-dotnet run -p:Platform=x64
+dotnet run --project "ImageCompressor.csproj" -p:Platform=x64
 
 # 4. 发布 Windows 10 版本
-dotnet publish -c Release -p:Platform=x64
+dotnet publish "ImageCompressor.csproj" -c Release -p:Platform=x64
 
 # 5. 同时发布 32 位和 64 位版本
 发布32位和64位版本.bat
@@ -89,10 +89,10 @@ dotnet publish -c Release -p:Platform=x64
 cd ImageCompressor
 
 # 还原依赖
-dotnet restore
+dotnet restore "ImageCompressor.csproj"
 
 # 运行
-dotnet run --framework net48 -p:Platform=x64
+dotnet run --project "ImageCompressor.csproj" --framework net48 -p:Platform=x64
 ```
 
 ## 使用方法
@@ -132,10 +132,10 @@ dotnet run --framework net48 -p:Platform=x64
 cd ImageCompressor
 
 # 还原依赖
-dotnet restore
+dotnet restore "ImageCompressor.csproj"
 
 # 编译运行
-dotnet run -p:Platform=x64
+dotnet run --project "ImageCompressor.csproj" -p:Platform=x64
 ```
 
 ### 发布为可执行文件（推荐）
@@ -143,13 +143,14 @@ dotnet run -p:Platform=x64
 `.NET Framework 4.8` 不是现代 `.NET` 的 self-contained 模式，因此推荐直接分发 `publish` 目录。
 
 ```bash
-dotnet publish -c Release -p:Platform=x64
-dotnet publish -c Release -p:Platform=x86
+dotnet publish "ImageCompressor.csproj" -c Release -p:Platform=x64
+dotnet publish "ImageCompressor.csproj" -c Release -p:Platform=x86
 ```
 
 - ✅ 生成适合 Windows 10 的发布目录
 - ✅ 直接运行生成的 `ImageCompressor.exe`
 - ✅ 适合打包为 zip/rar 后分发
+- 注意：请直接针对 `ImageCompressor.csproj` 执行 `dotnet publish`，避免根目录下 `.slnx` 的配置映射问题
 - 注意：目标机器需要启用 `.NET Framework 4.8`
 - 注意：`QuestPDF` 依赖原生库，必须按架构发布，不能使用 `Any CPU`
 
@@ -206,6 +207,7 @@ bin/x86/Release/net48/win-x86/publish/
 
 - 支持的格式：JPG、PNG、GIF、BMP
 - 压缩后的图片质量会比原图有所降低
+- 当前策略下，非 `jpg/jpeg` 图片会先转换为 `jpg`，再执行压缩；透明背景会转为白底
 - 对于非常大的图片，可能需要一些时间处理
 - 压缩质量范围设置为10%-80%，避免过度压缩导致图片严重失真
 - `QuestPDF` 使用原生依赖，若出现 `BadImageFormatException`，优先检查是否选错了 x86/x64 版本
